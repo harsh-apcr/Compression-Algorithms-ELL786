@@ -80,6 +80,8 @@ def decode(s, coding_tree):
             output = output + letter_node.__str__()
             letter_node = coding_tree  # back to the root
 
+    if letter_node != coding_tree:
+        return False    # message is not decodable with given alphabet set
     return output
 
 
