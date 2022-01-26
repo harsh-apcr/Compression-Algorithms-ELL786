@@ -67,7 +67,8 @@ for i in range(n):
             i+=1
             break
 
-print(l1) 
+l1 = (l1+h1)/2
+print(l1)
 
 
 #decoding
