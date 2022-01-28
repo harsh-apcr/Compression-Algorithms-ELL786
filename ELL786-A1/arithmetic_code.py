@@ -85,4 +85,5 @@ for i in range(n):
             decoded_string+=s[p1]
             break
 
-print(decoded_string)            
+print(decoded_string)
+print(decoded_string == data)
