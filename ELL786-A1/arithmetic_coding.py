@@ -88,7 +88,7 @@ def decipher_tag(tag, k, cdf_dict):
     return output
 
 
-def arith_decode(s, k, alphabet, prob_model):
+def arith_decode(s, k, alphabet, prob_model):   # k is length of original string in the message
     # s is a binary string
     tag = 0.0
     i = 1

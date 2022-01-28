@@ -20,7 +20,7 @@ def rep_decode(s, r):
         if s.count('0', i, i+r) > r//2:
             output += '0'
         else:
-            # even if s.count('0', i,i+r) == r/2 (in case r is even) then '1' is taken
+            # even if s.count('0',i,i+r) == r/2 (in case r is even) then '1' is taken
             output += '1'
         i += r
     return output

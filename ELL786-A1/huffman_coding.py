@@ -57,16 +57,24 @@ def huffman(alphabet, prob_model):
 
 # generating codewords
 
-def generate_codewords(prefix, coding_tree, letter_codeword_dict):
+def compute_codebook(alphabet, coding_tree):
+    letter_codewords = {}
+    for s in alphabet:
+        letter_codewords[s] = ""
+    aux_generate_codewords("", coding_tree, letter_codewords)
+    return letter_codewords
+
+
+def aux_generate_codewords(prefix, coding_tree, letter_codeword_dict):
     if coding_tree.is_leaf():
         letter_codeword_dict[coding_tree.symbol] = prefix
 
     else:
-        generate_codewords(prefix + '0', coding_tree.get_left(), letter_codeword_dict)
-        generate_codewords(prefix + '1', coding_tree.get_right(), letter_codeword_dict)
+        aux_generate_codewords(prefix + '0', coding_tree.get_left(), letter_codeword_dict)
+        aux_generate_codewords(prefix + '1', coding_tree.get_right(), letter_codeword_dict)
 
 
-def decode(s, coding_tree):
+def huffman_decode(s, coding_tree):
     # s is a binary string
     # coding tree must not be empty
     letter_node = coding_tree
@@ -84,5 +92,18 @@ def decode(s, coding_tree):
         return None    # message is not decodable with given alphabet set
     return output
 
+
+def extended_huffman_encode(k, s, codebook):
+    output = ""
+    i = 0
+    n = len(s)
+    while i < n:
+        output += codebook[s[i:i+k]]
+        i += k
+    return output
+
+
+def huffman_encode(s, codebook):
+    return extended_huffman_encode(1, s, codebook)
 
 
