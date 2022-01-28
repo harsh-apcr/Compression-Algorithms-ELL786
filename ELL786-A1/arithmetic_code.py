@@ -67,7 +67,8 @@ for i in range(n):
             i+=1
             break
 
-print(l1) 
+l1 = (l1+h1)/2
+print(l1)
 
 
 #decoding
@@ -85,5 +86,9 @@ for i in range(n):
             decoded_string+=s[p1]
             break
 
+<<<<<<< HEAD
 print(decoded_string)
 print(decoded_string == data)
+=======
+print(decoded_string)            
+>>>>>>> 907d0a5f283985b49b1c2c91c29eef0ce348e23c
