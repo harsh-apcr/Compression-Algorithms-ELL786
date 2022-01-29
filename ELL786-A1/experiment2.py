@@ -1,8 +1,9 @@
 from experiment1 import text_to_binary, generate_random_binary_string, xor_binary_strings, binarystring_textfile
-from huffman_coding import huffman, huffman_decode, compute_codebook, extended_huffman_encode
+from huffman_coding import huffman, huffman_decode, compute_codebook, extended_huffman_encode, huffman_encode
 from repetition_code import rep_encode, rep_decode
 from arithmetic_coding import generate_binary_code, arith_decode
 from functools import reduce
+from itertools import groupby
 
 
 def divide_str(s, k):
@@ -15,14 +16,20 @@ def divide_str(s, k):
     return parts
 
 
-# specifically for 16 letter alphabet set consisting of binary string of length 4
-def compute_prob(s):
-    p0 = s.count('0') / len(s)
-    p1 = s.count('1') / len(s)
-    return [p0 * p0 * p0 * p0, p0 * p0 * p0 * p1, p0 * p0 * p1 * p0, p0 * p0 * p1 * p1, p0 * p1 * p0 * p0,
-            p0 * p1 * p0 * p1, p0 * p1 * p1 * p0, p0 * p1 * p1 * p1,
-            p1 * p0 * p0 * p0, p1 * p0 * p0 * p1, p1 * p0 * p1 * p0, p1 * p0 * p1 * p1, p1 * p1 * p0 * p0,
-            p1 * p1 * p0 * p1, p1 * p1 * p1 * p0, p1 * p1 * p1 * p1]
+def compute_prob(s, alphabet):
+    prob_list = []
+    for a in alphabet:
+        prob_list.append(s.count(a) / len(s))
+    return prob_list
+
+
+def compute_prob_extended(s, extended_alphabet, alphabet):
+    prob_list = []
+    single_prob_list = compute_prob(s, alphabet)
+    for [x, y, z, w] in extended_alphabet:
+        prob_list.append(single_prob_list[alphabet.index(x)] * single_prob_list[alphabet.index(y)] *
+                         single_prob_list[alphabet.index(z)] * single_prob_list[alphabet.index(w)])
+    return prob_list
 
 
 # compare differences in two string of same sizes
@@ -39,33 +46,49 @@ file = open('message.txt', 'r')
 message = file.read()
 file.close()
 
-# read the input file and convert it into a binary string
-message_bin = text_to_binary(message)
+# divide the input string into chunks of size k
+chunks = divide_str(message, 16)  # k = 16
 
-# divide the input string into chunks of size k bits
-chunks = divide_str(message_bin, 16)  # k = 16
+# alphabet set for each chunk
+list_alphabet_set = [''.join(k for k, g in groupby(sorted(chunk))) for chunk in chunks]
 
-# encode each chunk using huffman,extended huffman,arithmetic codes
-huffman_code = [rep_encode(s, 5) for s in chunks]
+# extended alphabet of size 4
+list_alphabet_set4 = []
+for alphabet in list_alphabet_set:
+    alphabet_set4 = []
+    for x in alphabet:
+        for y in alphabet:
+            for z in alphabet:
+                for w in alphabet:
+                    alphabet_set4.append([x, y, z, w])
+    list_alphabet_set4.append(alphabet_set4)
 
-###
-alphabet_set = ['0000', '0001', '0010', '0011', '0100', '0101', '0110', '0111',
-                '1000', '1001', '1010', '1011', '1100', '1101', '1110', '1111']
+# encode each chunk using huffman,extended huffman,arithmetic codes (data compression)
 
-probs_huffman = [compute_prob(s) for s in chunks]
-probs_arith = [[s.count('0') / len(s), s.count('1') / len(s)] for s in chunks]
+#####################################
+probs_huffman = [compute_prob(s, a_set) for s, a_set in zip(chunks, list_alphabet_set)]
+probs_extended_huffman = [compute_prob_extended(s, ea_set, a_set)
+                          for s, ea_set, a_set in zip(chunks, list_alphabet_set4, list_alphabet_set)]
 
-huffman_trees = [huffman(alphabet_set, p) for p in probs_huffman]   # for extended huffman
-###
+huffman_trees = [huffman(a_set, p) for p, a_set in zip(probs_huffman, list_alphabet_set)]
+ehuffman_trees = [huffman(a_set, p) for p, a_set in zip(probs_extended_huffman, list_alphabet_set4)]
+####################################
 
-extended_huffman_code = [rep_encode(extended_huffman_encode(4, s, compute_codebook(alphabet_set, tree)), 5) for s, tree
-                         in zip(chunks, huffman_trees)]
 
-arithmetic_code = [rep_encode(generate_binary_code(s, ['0', '1'], p), 9) for s, p in zip(chunks, probs_arith)]
+huffman_code = [rep_encode(huffman_encode(s, compute_codebook(a_set, tree)), 5)
+                for s, a_set, tree in zip(chunks, list_alphabet_set, huffman_trees)]
+
+extended_huffman_code = [rep_encode(extended_huffman_encode(4, s, compute_codebook(ea_set, tree)), 5)
+                         for s, tree, ea_set in zip(chunks, ehuffman_trees, list_alphabet_set4)]
+
+# prob for arithmetic code is same as prob required for huffman
+arithmetic_code = [rep_encode(generate_binary_code(s, a_set, p), 5)
+                   for s, a_set, p in zip(chunks, list_alphabet_set, probs_huffman)]
+
 
 # generate random error pattern with hamming weight d , such that non-zero entries are uniformly distributed
-
 # d = 10
+
 error_pattern_huffman = generate_random_binary_string(reduce(lambda x, y: x + len(y), huffman_code, 0), 10)
 
 error_pattern_extended_huffman = generate_random_binary_string(
@@ -74,32 +97,67 @@ error_pattern_extended_huffman = generate_random_binary_string(
 error_pattern_arithmetic = generate_random_binary_string(reduce(lambda x, y: x + len(y), arithmetic_code, 0), 10)
 
 # XOR the error pattern with encoded bits , call the obtained sequence y
+y_huffman = []
+i1, j1 = 0, 0
+n1 = len(error_pattern_huffman)
+while i1 < n1:
+    k1 = len(huffman_code[j1])
+    y_huffman.append(xor_binary_strings(error_pattern_huffman[i1:i1+k1], huffman_code[j1]))
+    i1 += k1
+    j1 += 1
 
-y_huffman = xor_binary_strings(error_pattern_huffman, reduce(lambda x, y: x + y, huffman_code, ""))
 
-y_extended_huffman = xor_binary_strings(error_pattern_extended_huffman,
-                                        reduce(lambda x, y: x + y, extended_huffman_code, ""))
+y_extended_huffman = []
+i2, j2 = 0, 0
+n2 = len(error_pattern_extended_huffman)
+while i2 < n2:
+    k2 = len(extended_huffman_code[j2])
+    y_extended_huffman.append(xor_binary_strings(error_pattern_extended_huffman[i2:i2+k2], extended_huffman_code[j2]))
+    i2 += k2
+    j2 += 1
 
-y_arithmetic = xor_binary_strings(error_pattern_arithmetic, reduce(lambda x, y: x + y, arithmetic_code, ""))
+
+y_arithmetic = []
+i3, j3 = 0, 0
+n3 = len(error_pattern_arithmetic)
+while i3 < n3:
+    k3 = len(arithmetic_code[j3])
+    y_arithmetic.append(xor_binary_strings(error_pattern_arithmetic[i3:i3+k3], arithmetic_code[j3]))
+    i3 += k3
+    j3 += 1
 
 # using y retrieve the text file by decoding
-huffman_rep_decode, huffman_error_corrected = rep_decode(y_huffman, 5)
-huffman_decoded = reduce(lambda x, y: x + y, divide_str(huffman_rep_decode, 16), "")
-# huffman_decode(y) = y (y is a binary string)
 
-# extended_huffman_rep_decode, extended_huffman_error_corrected = rep_decode(y_extended_huffman, 5)
-# extended_huffman_decoded = reduce(lambda x, y: x + huffman_decode(*y),
-#                                   zip(divide_str(extended_huffman_rep_decode, 16), huffman_trees), "")
+huffman_rep_decode = [rep_decode(y_huffman_code, 5) for y_huffman_code in y_huffman]
+# pair of error decoded file and number of errors corrected
 
-arithmetic_rep_decode, arithmetic_error_corrected = rep_decode(y_arithmetic, 9)
-arithmetic_decoded = reduce(lambda x, y: x + arith_decode(y[0], len(y[1]), ['0', '1'], y[2]),
-                            zip(divide_str(arithmetic_rep_decode, 16), chunks, probs_arith), "")
-
-# Number of error corrected / detected
+huffman_decoded = ""
+huffman_corrected_errors = 0
+for tree, e_decoded in zip(huffman_trees, huffman_rep_decode):
+    huffman_decoded += huffman_decode(e_decoded[0], tree)
+    huffman_corrected_errors += e_decoded[1]
 
 
-message_huffman = binarystring_textfile(huffman_decoded)
-# message_extended_huffman = binarystring_textfile(extended_huffman_decoded)
-message_arithmetic = binarystring_textfile(arithmetic_decoded)
+ehuffman_rep_decode = [rep_decode(y_ehuffman, 5) for y_ehuffman in y_extended_huffman]
+ehuffman_decoded = ""
+ehuffman_corrected_errors = 0
+for tree, e_decoded in zip(ehuffman_trees, ehuffman_rep_decode):
+    ehuffman_decoded += huffman_decode(e_decoded[0], tree)
+    ehuffman_corrected_errors += e_decoded[1]
 
-print(arithmetic_code)
+
+arith_rep_decode = [rep_decode(y_arith, 5) for y_arith in y_arithmetic]
+arith_decoded = ""
+arith_corrected_errors = 0
+for e_decoded, a_set, prob_model in zip(arith_rep_decode, list_alphabet_set, probs_huffman):
+    arith_decoded += arith_decode(e_decoded[0], 16, a_set, prob_model)
+    arith_corrected_errors += e_decoded[1]
+
+print(arith_decoded)
+
+# arithmetic_decoded = reduce(lambda x, y: x + arith_decode(y[0], len(y[1]), ['0', '1'], y[2]),
+#                             zip(divide_str(arithmetic_rep_decode, 16), chunks, probs_arith), "")
+#
+# # Number of error corrected / detected
+#
+# print(arithmetic_code)

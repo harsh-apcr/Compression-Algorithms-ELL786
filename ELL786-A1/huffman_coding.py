@@ -1,5 +1,5 @@
 import heapq
-
+from functools import reduce
 
 class Letter:
 
@@ -60,14 +60,14 @@ def huffman(alphabet, prob_model):
 def compute_codebook(alphabet, coding_tree):
     letter_codewords = {}
     for s in alphabet:
-        letter_codewords[s] = ""
+        letter_codewords[reduce(lambda x, y: x+y, s, "")] = ""
     aux_generate_codewords("", coding_tree, letter_codewords)
     return letter_codewords
 
 
 def aux_generate_codewords(prefix, coding_tree, letter_codeword_dict):
     if coding_tree.is_leaf():
-        letter_codeword_dict[coding_tree.symbol] = prefix
+        letter_codeword_dict[reduce(lambda x, y: x+y, coding_tree.symbol, "")] = prefix
 
     else:
         aux_generate_codewords(prefix + '0', coding_tree.get_left(), letter_codeword_dict)
@@ -85,7 +85,7 @@ def huffman_decode(s, coding_tree):
         else:
             letter_node = letter_node.get_right()
         if letter_node.is_leaf():
-            output = output + letter_node.__str__()
+            output = output + reduce(lambda x, y: x+y, letter_node.__str__(), "")
             letter_node = coding_tree  # back to the root
 
     if letter_node != coding_tree:
