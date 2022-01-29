@@ -16,12 +16,15 @@ def rep_decode(s, r):
     i = 0
     n = len(s)
     output = ""
+    errors_corrected = 0
     while i < n:
-        if s.count('0', i, i+r) > r//2:
+        count0 = s.count('0', i, i+r)
+        if count0 > r//2:
             output += '0'
         else:
             # even if s.count('0',i,i+r) == r/2 (in case r is even) then '1' is taken
             output += '1'
         i += r
-    return output
+        errors_corrected += 1 if count0 != r else 0
+    return output, errors_corrected
 
