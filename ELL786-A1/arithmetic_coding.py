@@ -9,6 +9,9 @@ def pred(a, alphabet):
             return i - 1
 
 
+# computes cdf for each symbol in the alphabet set
+# alphabet - alphabet set
+# prob_model - probability of each symbol in the alphabet
 def compute_cdf(alphabet, prob_model):
     cdf_dict = dict()
     f = 0
@@ -19,6 +22,10 @@ def compute_cdf(alphabet, prob_model):
     return cdf_dict
 
 
+# generates tag for a sequence of symbols
+# x - sequence for which to generate tag for
+# alphabet - alphabet_set
+# prob_model - probability of each symbol in the alphabet
 def generate_tag(x, alphabet, prob_model):
     # x is a sequence of symbols (to encode)
     # cdf_dict is a dictionary with keys as symbols and values as cdf
@@ -36,6 +43,10 @@ def generate_tag(x, alphabet, prob_model):
     return (_l + _u) / 2
 
 
+# returns probability of a sequence
+# s - sequence for which to compute probability for
+# alphabet - alphabet set
+# prob_model - probability of each symbol in the alphabet
 def prob_seq(s, alphabet, prob_model):
     prob = 1.0
     for c in s:
@@ -43,6 +54,7 @@ def prob_seq(s, alphabet, prob_model):
     return prob
 
 
+# encoding tag into binary up to "length" many bits
 # 0<=tag<1
 def encode_tag(tag, length):
     code = ""
@@ -52,9 +64,12 @@ def encode_tag(tag, length):
         code += str(math.floor(tag))
         tag = tag - math.floor(tag)
         i += 1
+    if len(code) < length:
+        code += "0"*(length - len(code))
     return code
 
 
+# generates binary code for a sequence x with given alphabet set and probability model
 def generate_binary_code(x, alphabet, prob_model):
     # tag value and probability of the sequence
     prob = prob_seq(x, alphabet, prob_model)
@@ -65,11 +80,12 @@ def generate_binary_code(x, alphabet, prob_model):
 
 # decipher the tag value
 # k: length of the sequence to decipher
+# cdf_dict: dictionary of the (letter, cdf) pair
 def decipher_tag(tag, k, cdf_dict):
     _l = 0
     _u = 1
     output = ""
-    for k in range(k):
+    for i in range(k):
         t = (tag - _l)/(_u - _l)
         _f = 0    # value of f in prev iteration
         _s = ""   # value of s in prev iteration
@@ -88,6 +104,7 @@ def decipher_tag(tag, k, cdf_dict):
     return output
 
 
+# decode a binary sequence s using arithmetic decoding given k is original sequence length
 def arith_decode(s, k, alphabet, prob_model):   # k is length of original string in the message
     # s is a binary string
     tag = 0.0
