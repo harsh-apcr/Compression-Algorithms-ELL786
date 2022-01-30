@@ -1,4 +1,4 @@
-from experiment1 import generate_random_binary_string, xor_binary_strings, binarystring_textfile
+from experiment1 import generate_random_binary_string, xor_binary_strings
 from huffman_coding import huffman, huffman_decode, compute_codebook, extended_huffman_encode, huffman_encode
 from repetition_code import rep_encode, rep_decode
 from arithmetic_coding import generate_binary_code, arith_decode
@@ -36,7 +36,7 @@ def compute_prob_extended(s, extended_alphabet, alphabet):
     return prob_list
 
 
-# compare differences in two string of same sizes
+# compare differences in two string
 def compare(s1, s2):
     n = len(s1)
     m = len(s2)
@@ -47,11 +47,13 @@ def compare(s1, s2):
         elif i == m:
             c += n-m
             return c
+    if n < m:
+        c += m-n
     return c
 
 
 k = 8
-d = 5000
+d = 500
 
 file = open('message.txt', 'r')
 message = file.read()
@@ -213,7 +215,6 @@ len_message = len(message)
 print("% of modified characters in huffman coding", compare(message, huffman_decoded)/len_message * 100, "%")
 print("% of modified characters in extended huffman coding", compare(message, ehuffman_decoded)/len_message * 100, "%")
 print("% of modified characters in arithmetic coding", compare(message, arith_decoded)/len_message * 100, "%")
-
 
 
 

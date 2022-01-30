@@ -145,7 +145,3 @@ def arith_decode(s, k, alphabet, prob_model):
         i += 1
         
     return decipher_tag(tag, k, compute_cdf(alphabet, prob_model))
-
-
-print(generate_binary_code(s,alphabet,prob_model))
-print(arith_decode("00000100000000001010010110101000110111011000101100110011",27,alphabet,prob_model))
