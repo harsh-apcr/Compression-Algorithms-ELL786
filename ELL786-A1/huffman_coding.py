@@ -1,6 +1,7 @@
 import heapq
 from functools import reduce
 
+
 class Letter:
 
     # symbol : symbol of an alphabet
@@ -33,7 +34,9 @@ class Letter:
         return self.left is None and self.right is None
 
 
-# returns coding tree
+# returns huffman coding tree
+# alphabet - source alphabet set
+# prob_model - probability model for the alphabet set
 def huffman(alphabet, prob_model):
     letter_list = []
     n = len(alphabet)
@@ -56,7 +59,8 @@ def huffman(alphabet, prob_model):
 
 
 # generating codewords
-
+# alphabet - source alphabet set
+# coding_tree - source huffman coding_tree
 def compute_codebook(alphabet, coding_tree):
     letter_codewords = {}
     for s in alphabet:
@@ -74,6 +78,9 @@ def aux_generate_codewords(prefix, coding_tree, letter_codeword_dict):
         aux_generate_codewords(prefix + '1', coding_tree.get_right(), letter_codeword_dict)
 
 
+# decode a binary string using huffman decompression
+# s - string to decode
+# coding_tree - coding_tree for the source
 def huffman_decode(s, coding_tree):
     # s is a binary string
     # coding tree must not be empty
@@ -89,10 +96,14 @@ def huffman_decode(s, coding_tree):
             letter_node = coding_tree  # back to the root
 
     if letter_node != coding_tree:
-        return None    # message is not decodable with given alphabet set
+        return output    # message is not decodable with given alphabet set
     return output
 
 
+# encode a sequence using extended huffman coding
+# k - size of each symbol
+# s - sequence
+# codebook - {symbol : codeword} dictionary
 def extended_huffman_encode(k, s, codebook):
     output = ""
     i = 0
@@ -103,6 +114,7 @@ def extended_huffman_encode(k, s, codebook):
     return output
 
 
+# encode a sequence using huffman coding
 def huffman_encode(s, codebook):
     return extended_huffman_encode(1, s, codebook)
 
