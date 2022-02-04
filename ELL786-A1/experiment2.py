@@ -45,15 +45,15 @@ def compare(s1, s2):
         if i < m and s1[i] != s2[i]:
             c += 1
         elif i == m:
-            c += n-m
+            c += n - m
             return c
     if n < m:
-        c += m-n
+        c += m - n
     return c
 
 
 k = 8
-d = 500
+d = 5000
 
 file = open('message.txt', 'r')
 message = file.read()
@@ -64,7 +64,6 @@ chunks = divide_str(message, k)  # k = 8
 
 # alphabet set for each chunk
 list_alphabet_set = [''.join(k for k, g in groupby(sorted(chunk))) for chunk in chunks]
-
 
 # extended alphabet of size 4 for each corresponding chunk in chunks
 list_alphabet_set4 = []
@@ -100,18 +99,24 @@ ehuffman_trees = [huffman(a_set, p) for p, a_set in zip(probs_extended_huffman, 
 
 r = 5
 # Huffman-Repetition Coding
-huffman_code = [rep_encode(huffman_encode(s, compute_codebook(a_set, tree)), r)
-                for s, a_set, tree in zip(chunks, list_alphabet_set, huffman_trees)]
+
+chuffman_code = [huffman_encode(s, compute_codebook(a_set, tree))
+                 for s, a_set, tree in zip(chunks, list_alphabet_set, huffman_trees)]
+huffman_code = [rep_encode(h_code, r)
+                for h_code in chuffman_code]
 
 # Extended Huffman-Repetition Coding
-extended_huffman_code = [rep_encode(extended_huffman_encode(4, s, compute_codebook(ea_set, tree)), r)
-                         for s, tree, ea_set in zip(chunks, ehuffman_trees, list_alphabet_set4)]
+
+cextended_huffman_code = [extended_huffman_encode(4, s, compute_codebook(ea_set, tree))
+                          for s, tree, ea_set in zip(chunks, ehuffman_trees, list_alphabet_set4)]
+extended_huffman_code = [rep_encode(eh_code, r) for eh_code in cextended_huffman_code]
 
 # Arithmetic-Repetition Coding
 # prob for arithmetic code is same as prob required for huffman
-arithmetic_code = [rep_encode(generate_binary_code(s, a_set, p), r)
-                   for s, a_set, p in zip(chunks, list_alphabet_set, probs_huffman)]
 
+carithmetic_code = [generate_binary_code(s, a_set, p)
+                    for s, a_set, p in zip(chunks, list_alphabet_set, probs_huffman)]
+arithmetic_code = [rep_encode(a_code, r) for a_code in carithmetic_code]
 
 # generate random error pattern with hamming weight d , such that non-zero entries are uniformly distributed
 
@@ -125,7 +130,6 @@ error_pattern_extended_huffman = generate_random_binary_string(
 # Error pattern for arithmetic_code
 error_pattern_arithmetic = generate_random_binary_string(reduce(lambda x, y: x + len(y), arithmetic_code, 0), d)
 
-
 # XOR the error pattern with encoded bits , call the obtained sequence y
 
 # compute y for huffman_code
@@ -134,10 +138,9 @@ i1, j1 = 0, 0
 n1 = len(error_pattern_huffman)
 while i1 < n1:
     k1 = len(huffman_code[j1])
-    y_huffman.append(xor_binary_strings(error_pattern_huffman[i1:i1+k1], huffman_code[j1]))
+    y_huffman.append(xor_binary_strings(error_pattern_huffman[i1:i1 + k1], huffman_code[j1]))
     i1 += k1
     j1 += 1
-
 
 # compute y for extended_huffman_code
 y_extended_huffman = []
@@ -145,10 +148,9 @@ i2, j2 = 0, 0
 n2 = len(error_pattern_extended_huffman)
 while i2 < n2:
     k2 = len(extended_huffman_code[j2])
-    y_extended_huffman.append(xor_binary_strings(error_pattern_extended_huffman[i2:i2+k2], extended_huffman_code[j2]))
+    y_extended_huffman.append(xor_binary_strings(error_pattern_extended_huffman[i2:i2 + k2], extended_huffman_code[j2]))
     i2 += k2
     j2 += 1
-
 
 # compute y for arithmetic_code
 y_arithmetic = []
@@ -156,7 +158,7 @@ i3, j3 = 0, 0
 n3 = len(error_pattern_arithmetic)
 while i3 < n3:
     k3 = len(arithmetic_code[j3])
-    y_arithmetic.append(xor_binary_strings(error_pattern_arithmetic[i3:i3+k3], arithmetic_code[j3]))
+    y_arithmetic.append(xor_binary_strings(error_pattern_arithmetic[i3:i3 + k3], arithmetic_code[j3]))
     i3 += k3
     j3 += 1
 
@@ -206,15 +208,14 @@ for e_decoded, a_set, prob_model in zip(arith_rep_decode, list_alphabet_set, pro
 
 
 print(f"For k = {k}, d = {d}, r = {r}")
+
+len_message = len(message)
+
 print("Number of corrected errors in Huffman ", huffman_corrected_errors)
 print("Number of corrected errors in Extended Huffman ", ehuffman_corrected_errors)
 print("Number of corrected errors in Arithmetic ", arith_corrected_errors)
 
-len_message = len(message)
-
-print("% of modified characters in huffman coding", compare(message, huffman_decoded)/len_message * 100, "%")
-print("% of modified characters in extended huffman coding", compare(message, ehuffman_decoded)/len_message * 100, "%")
-print("% of modified characters in arithmetic coding", compare(message, arith_decoded)/len_message * 100, "%")
-
-
-
+print("% of modified characters in huffman coding", compare(message, huffman_decoded) / len_message * 100, "%")
+print("% of modified characters in extended huffman coding", compare(message, ehuffman_decoded) / len_message * 100,
+      "%")
+print("% of modified characters in arithmetic coding", compare(message, arith_decoded) / len_message * 100, "%")
