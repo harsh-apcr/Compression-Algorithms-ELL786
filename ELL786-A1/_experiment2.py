@@ -5,13 +5,13 @@ from arithmetic_coding import generate_binary_code, arith_decode
 from functools import reduce
 
 
-def divide_str(s, k):
+def divide_str(s, m):
     parts = []
     i = 0
     n = len(s)
     while i < n:
-        parts.append(s[i:i+k])
-        i += k
+        parts.append(s[i:i+m])
+        i += m
     return parts
 
 
@@ -45,7 +45,7 @@ file.close()
 
 k = 52  # must be a multiple of 4
 r = 5   # repetition value for repetition code
-d = 5000
+d = 2000
 
 # read the input file and convert it into a binary string
 message_bin = text_to_binary(message)
@@ -161,10 +161,16 @@ for e_decoded, prob_model in zip(arith_rep_decode, probs_arith):
 # arith_decoded is the text file received at the receiver end
 # arith_corrected_errors is the number of errors corrected
 
+# retrieving the text file
+
+text_huffman = binarystring_textfile(huffman_decoded)
+text_ehuffman = binarystring_textfile(ehuffman_decoded)
+text_arithmetic = binarystring_textfile(arith_decoded)
+
 
 print(f"For k = {k}, d = {d}, r = {r}")
 
-len_message = len(message_bin)
+len_message = len(message_bin)  # length of binary message
 
 print("Compression ratio for Huffman Coding ", reduce(lambda a, b: a+len(b), chuffman_code, 0)/len_message)
 print("Compression ratio for Extended Huffman Coding ", reduce(lambda a, b: a+len(b), cextended_huffman_code, 0)/len_message)
@@ -174,7 +180,9 @@ print("Number of corrected errors in Huffman ", huffman_corrected_errors)
 print("Number of corrected errors in Extended Huffman ", ehuffman_corrected_errors)
 print("Number of corrected errors in Arithmetic ", arith_corrected_errors)
 
-print("% of modified characters in huffman coding", compare(message_bin, huffman_decoded) / len_message * 100, "%")
-print("% of modified characters in extended huffman coding", compare(message_bin, ehuffman_decoded) / len_message * 100,
+len_tmessage = len(message)  # length of text message
+
+print("% of modified characters in huffman coding", compare(message, text_huffman) / len_tmessage * 100, "%")
+print("% of modified characters in extended huffman coding", compare(message, text_ehuffman) / len_tmessage * 100,
       "%")
-print("% of modified characters in arithmetic coding", compare(message_bin, arith_decoded) / len_message * 100, "%")
+print("% of modified characters in arithmetic coding", compare(message, text_arithmetic) / len_tmessage * 100, "%")
