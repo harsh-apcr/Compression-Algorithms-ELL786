@@ -32,7 +32,7 @@ def encoding(s, d0):
     code_stream.append(code_table[p])
     return code_stream
 
-# encoding function takes codes and initial dictionary as input and decodes the string
+# decoding function takes codes and initial dictionary as input and decodes the string
 
 def decoding(v, d0):
 
