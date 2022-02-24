@@ -12,7 +12,7 @@ def int_binary(r, k):
 
 def unary_code(q):
     # unary code of q
-    return '1' * q + '0'
+    return '0' * q + '1'
 
 
 def codeword_remainder(r, m):
@@ -32,7 +32,7 @@ def golomb_power_of_two(y, k):
     return unary_code(y >> k) + int_binary(y & ((1 << k) - 1), k)
 
 
-# b = max(2, math.ceil(log2(M)) ), where M is the alphabet-set size
+# b = math.ceil(log2(M)) , where M is the alphabet-set size
 # L - maximum codeword length
 # constraint: L > b+1
 def modified_GPO2(y, k, b, L):
@@ -44,21 +44,16 @@ def modified_GPO2(y, k, b, L):
         return unary_code(q_max) + int_binary(y - 1, b)
 
 
-def modified_GPO2_decode(s, k, b, L):
+def modified_GPO2_decode(s, b, L):
     q_max = L - b - 1
-    if s[:q_max] == '1' * q_max:
+    if s[:q_max] == '0' * q_max:
         # escape-code identified
         return int(s[q_max + 1:], 2) + 1
     else:
         # simply encode y using GPO2
-        n = len(s)
-        y = ''
-        for i in range(n - k, n):
-            y = y + s[i]
-        num = n - k - 1
-        y = bin(num)[2:] + y
-
-        return int(y, 2)
-
+        i = 0
+        while s[i] != '1':
+            i += 1
+        return int(bin(i)[2:] + s[i+1:], 2)
 
 

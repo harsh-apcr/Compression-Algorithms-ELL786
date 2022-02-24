@@ -1,4 +1,6 @@
-from golomb_code import modified_GPO2 , modified_GPO2_decode
+import numpy as np
+
+from golomb_code import modified_GPO2, modified_GPO2_decode
 import math
 
 
@@ -51,8 +53,30 @@ def def_context(d1, d2, d3, t1=3, t2=7, t3=21):
 
 
 # maps the residue res for golomb coding
-def map_residue(res):
-    return 2 * abs(res) - 1 if res < 0 else 2 * abs(res)
+def map_residue(res, k, B, N):
+    if k == 0 and 2 * B <= -N:
+        if res >= 0:
+            return 2 * res + 1
+        else:
+            return -2 * (res + 1)
+    else:
+        if res >= 0:
+            return 2 * res
+        else:
+            return -2 * res - 1
+
+
+def invmap_residue(mapped_res, k, B, N):
+    if k == 0 and 2 * B <= -N:
+        if mapped_res % 2 == 0:
+            return (-mapped_res // 2) - 1
+        else:
+            return (mapped_res - 1) // 2
+    else:
+        if mapped_res % 2 == 0:
+            return mapped_res // 2
+        else:
+            return - (mapped_res + 1) // 2
 
 
 # de-correlation + refinement step
@@ -70,11 +94,12 @@ def jpegls_encode(grayscale_img, M, N0=64):
     correction = [0] * 365
     cum_ares = [max(2, (M + 32) // 64)] * 365
 
-    beta = max(2, math.ceil(math.log2(M)))
-    # any positive integer > beta+1 works
-    L_max = 2 * (beta + max(8, beta))
+    beta = math.ceil(math.log2(M))
+    bbeta = max(2, math.ceil(math.log2(M)))
+    # any positive integer > bbeta+1 works
+    L_max = 2 * (bbeta + max(8, bbeta))
 
-    residual_seq = [[0] * n] * m
+    residual_seq = np.zeros((m, n), dtype=object)
     for i in range(m):
         for j in range(n):
             # de-correlation via prediction
@@ -82,10 +107,6 @@ def jpegls_encode(grayscale_img, M, N0=64):
             b = get(grayscale_img, i - 1, j, m, n)
             c = get(grayscale_img, i - 1, j - 1, m, n)
             d = get(grayscale_img, i - 1, j + 1, m, n)
-
-            # fixed prediction
-            predicted_val = int(min(a, b)) if c >= max(a, b) else int(max(a, b)) if c <= min(a, b) else int(a) + int(
-                b) - int(c)
 
             # context modeling (refining prediction error)
 
@@ -95,22 +116,26 @@ def jpegls_encode(grayscale_img, M, N0=64):
             g3 = int(c) - int(a)
 
             # using default values of quantization boundaries to define context
-            c = def_context(g1, g2, g3)
+            c_vec = def_context(g1, g2, g3)
 
             # 'normalize' c such that first non-zero entry of c is positive
             SIGN = 1
-            if c[0] < 0:
-                c = [-x for x in c]
+            if c_vec[0] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
-            elif c[0] == 0 and c[1] < 0:
-                c = [-x for x in c]
+            elif c_vec[0] == 0 and c_vec[1] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
-            elif c[0] == 0 and c[1] == 0 and c[2] < 0:
-                c = [-x for x in c]
+            elif c_vec[0] == 0 and c_vec[1] == 0 and c_vec[2] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
 
             # value-given the context vector c
-            context = context_map(*c) - 1
+            context = context_map(*c_vec) - 1
+
+            # fixed prediction
+            predicted_val = int(min(a, b)) if c >= max(a, b) else int(max(a, b)) if c <= min(a, b) else int(a) + int(
+                b) - int(c)
 
             # refined/corrected prediction
             predicted_val = predicted_val + SIGN * correction[context]
@@ -128,28 +153,26 @@ def jpegls_encode(grayscale_img, M, N0=64):
             elif residue > M // 2:
                 residue = residue - M
 
-            # encode residual_seq[i][j] using Golomb-Codes
-            # compute golomb-parameter k
+            # encode residual_seq[i, j] using Golomb-Codes
+            # compute the context dependent golomb-parameter k
             k = 0
             while (cum_count[context] << k) < cum_ares[context]:
                 k += 1
 
-            if k > 0:
-                residual_seq[i][j] = modified_GPO2(map_residue(residue), k, beta, L_max)
-            elif k == 0 and 2 * cum_bias[context] > -cum_count[context]:
-                residual_seq[i][j] = modified_GPO2(map_residue(residue), 0, beta, L_max)
-            else:
-                residual_seq[i][j] = modified_GPO2(map_residue(-1 - residue), 0, beta, L_max)
+            # perform mapped error encoding
+            mapped_res = map_residue(residue, k, cum_bias[context], cum_count[context])
+            residual_seq[i, j] = modified_GPO2(mapped_res, k, beta, L_max)
 
             # update cum_count , cum_bias given context c
             cum_bias[context] += residue
-            cum_ares[context] += abs(cum_bias[context])
+            cum_ares[context] += abs(residue)
 
             # if reset threshold limit is reached
             if cum_count[context] == N0:
-                cum_count[context] = cum_count[context] // 2
-                cum_bias[context] = cum_bias[context] // 2
-                cum_ares[context] = cum_ares[context] // 2
+                cum_count[context] = cum_count[context] >> 1
+                cum_bias[context] = cum_bias[context] >> 1 if cum_bias[context] >= 0 else -(
+                        (1 - cum_bias[context]) >> 1)
+                cum_ares[context] = cum_ares[context] >> 1
             cum_count[context] += 1
 
             # division-free bias computation
@@ -164,7 +187,6 @@ def jpegls_encode(grayscale_img, M, N0=64):
                 cum_bias[context] -= cum_count[context]
                 if cum_bias[context] > 0:
                     cum_bias[context] = 0
-
     return residual_seq
 
 
@@ -181,11 +203,12 @@ def jpegls_decode(residual_seq, M, N0=64):
     correction = [0] * 365
     cum_ares = [max(2, (M + 32) // 64)] * 365
 
-    beta = max(2, math.ceil(math.log2(M)))
-    # any positive integer > beta+1 works
-    L_max = 2 * (beta + max(8, beta))
+    beta = math.ceil(math.log2(M))
+    bbeta = max(2, math.ceil(math.log2(M)))
+    # any positive integer > bbeta+1 works
+    L_max = 2 * (bbeta + max(8, bbeta))
 
-    grayscale_img = [[0] * n] * m
+    grayscale_img = np.zeros((m, n), dtype=int)
     for i in range(m):
         for j in range(n):
             # de-correlation via prediction
@@ -193,10 +216,6 @@ def jpegls_decode(residual_seq, M, N0=64):
             b = get(grayscale_img, i - 1, j, m, n)
             c = get(grayscale_img, i - 1, j - 1, m, n)
             d = get(grayscale_img, i - 1, j + 1, m, n)
-
-            # fixed-prediction
-            predicted_val = int(min(a, b)) if c >= max(a, b) else int(max(a, b)) if c <= min(a, b) else int(a) + int(
-                b) - int(c)
 
             # context modeling (refining prediction)
 
@@ -206,41 +225,58 @@ def jpegls_decode(residual_seq, M, N0=64):
             g3 = int(c) - int(a)
 
             # using default values of quantization boundaries to define context
-            c = def_context(g1, g2, g3)
+            c_vec = def_context(g1, g2, g3)
 
             # 'normalize' c such that first non-zero entry of c is positive
             SIGN = 1
-            if c[0] < 0:
-                c = [-x for x in c]
+            if c_vec[0] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
-            elif c[0] == 0 and c[1] < 0:
-                c = [-x for x in c]
+            elif c_vec[0] == 0 and c_vec[1] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
-            elif c[0] == 0 and c[1] == 0 and c[2] < 0:
-                c = [-x for x in c]
+            elif c_vec[0] == 0 and c_vec[1] == 0 and c_vec[2] < 0:
+                c_vec = [-x for x in c_vec]
                 SIGN = -1
 
             # value-given the context vector c
-            context = context_map(*c) - 1
+            context = context_map(*c_vec) - 1
+
+            # fixed-prediction
+            predicted_val = int(min(a, b)) if c >= max(a, b) else int(max(a, b)) if c <= min(a, b) else int(a) + int(
+                b) - int(c)
 
             # refined/corrected prediction
             predicted_val = predicted_val + SIGN * correction[context]
 
-            # compute golomb-parameter k , to decode residue
+            if predicted_val >= M:
+                predicted_val = M - 1
+            elif predicted_val < 0:
+                predicted_val = 0
+
+            # compute context dependent golomb-parameter k , to decode residue
             k = 0
             while (cum_count[context] << k) < cum_ares[context]:
                 k += 1
 
-            # decode residue
+            # decode residue (mapped error value)
+            mapped_residue = modified_GPO2_decode(residual_seq[i][j], beta, L_max)
 
-            residue = modified_GPO2_decode(residual_seq[i][j], k, beta, L_max)
-            # apply inverse map to residue to get the actual residue
-            if k > 0 or (k == 0 and 2 * cum_bias[context] > -cum_count[context]):
-                residue = residue // 2 if residue % 2 == 0 else -(residue + 1) // 2
-            else:
-                residue = -residue // 2 - 1 if residue % 2 == 0 else (residue + 1) // 2 - 1
+            # apply inverse map to residue to get the actual signed modulo residue
+            residue = invmap_residue(mapped_residue, k, cum_bias[context], cum_count[context])
 
-            modulo_res = residue
+            # update cum_count , cum_bias , cum_ares given context c
+            # low complexity division-free bias computation
+            cum_bias[context] += residue
+            cum_ares[context] += abs(residue)
+
+            # if reset thresh-hold limit is reached
+            if cum_count[context] == N0:
+                cum_count[context] = cum_count[context] >> 1
+                cum_bias[context] = cum_bias[context] >> 1 if cum_bias[context] >= 0 else -(
+                        (1 - cum_bias[context]) >> 1)
+                cum_ares[context] = cum_ares[context] >> 1
+            cum_count[context] += 1
 
             # above residue is "modulo-'ed" in [-M/2,M/2]
             # re-map to get actual "corrected" residue
@@ -250,27 +286,12 @@ def jpegls_decode(residual_seq, M, N0=64):
                 residue = residue - M
             elif residue < -predicted_val:
                 residue = residue + M
-
             residue = SIGN * residue
 
-            grayscale_img[i][j] = residue + predicted_val
+            grayscale_img[i, j] = (residue + predicted_val) % M
 
-            if grayscale_img[i][j] >= M:
-                grayscale_img[i][j] = M-1
-            elif grayscale_img[i][j] < 0:
-                grayscale_img[i][j] = 0
+            # Implement the 15th - pt
 
-            # update cum_count , cum_bias , cum_ares given context c
-            # low complexity division-free bias computation
-            cum_bias[context] += modulo_res
-            cum_ares[context] += abs(cum_bias[context])
-
-            # if reset thresh-hold limit is reached
-            if cum_count[context] == N0:
-                cum_count[context] = cum_count[context] // 2
-                cum_bias[context] = cum_bias[context] // 2
-                cum_ares[context] = cum_ares[context] // 2
-            cum_count[context] += 1
 
             # division-free bias computation
             if cum_bias[context] <= -cum_count[context]:
@@ -286,6 +307,3 @@ def jpegls_decode(residual_seq, M, N0=64):
                     cum_bias[context] = 0
 
     return grayscale_img
-
-
-
