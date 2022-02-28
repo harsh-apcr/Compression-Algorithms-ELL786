@@ -56,4 +56,3 @@ def modified_GPO2_decode(s, b, L):
             i += 1
         return int(bin(i)[2:] + s[i+1:], 2)
 
-

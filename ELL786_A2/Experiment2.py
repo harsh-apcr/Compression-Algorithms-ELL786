@@ -91,5 +91,5 @@ code = encoding(m, Dict)
 print(len(code))
 
 #finding compression ratio
-print("compression_ratio",(len(m)-len(code))/len(m))
+print("compression_ratio", len(m)/len(code))
 

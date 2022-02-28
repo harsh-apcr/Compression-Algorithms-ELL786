@@ -105,7 +105,7 @@ p = ''.join(['{0:020b}'.format(num) for num in code])
 print(len(p))
 
 
-print("compression_ratio",(len(m)-len(p))/len(m))
+print("compression_ratio", len(m)/len(p))
 
 m_dec = decoding(code, d)
 print(m_dec == m)

@@ -1,5 +1,4 @@
 import numpy as np
-
 from golomb_code import modified_GPO2, modified_GPO2_decode
 import math
 
@@ -289,9 +288,6 @@ def jpegls_decode(residual_seq, M, N0=64):
             residue = SIGN * residue
 
             grayscale_img[i, j] = (residue + predicted_val) % M
-
-            # Implement the 15th - pt
-
 
             # division-free bias computation
             if cum_bias[context] <= -cum_count[context]:
